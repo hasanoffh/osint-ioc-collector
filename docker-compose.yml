@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  osint-collector:
+    build: .
+    container_name: osint_ioc_collector
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    restart: always
