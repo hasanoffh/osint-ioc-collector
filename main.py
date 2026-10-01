@@ -5,53 +5,176 @@ from logging.handlers import RotatingFileHandler
 
 from fetchers import IOCFetcher
 from normalizer import normalize_all
-from storage import export_sample, export_to_csv, export_to_json, save_iocs_to_db
+from storage import (
+    export_sample,
+    export_to_csv,
+    export_to_json,
+    init_db,
+    save_feed_runs,
+    save_iocs_to_db,
+)
+
 
 logger = logging.getLogger("collector")
 
 
-def setup_logging(log_path="data/collector.log"):
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s")
-    file_h = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3, encoding="utf-8")
-    file_h.setFormatter(fmt)
-    console = logging.StreamHandler()
-    console.setFormatter(fmt)
+def setup_logging(
+    log_path="data/collector.log",
+):
+    os.makedirs(
+        os.path.dirname(log_path),
+        exist_ok=True,
+    )
+
+    formatter = logging.Formatter(
+        "%(asctime)s "
+        "%(levelname)-7s "
+        "%(name)s: "
+        "%(message)s"
+    )
+
+    file_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=2_000_000,
+        backupCount=3,
+        encoding="utf-8",
+    )
+
+    file_handler.setFormatter(
+        formatter
+    )
+
+    console_handler = logging.StreamHandler()
+
+    console_handler.setFormatter(
+        formatter
+    )
+
     root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    root.handlers = [file_h, console]
+
+    root.setLevel(
+        logging.INFO
+    )
+
+    root.handlers = [
+        file_handler,
+        console_handler,
+    ]
 
 
-def run(make_sample=False):
-    logger.info("=== IOC toplama başladı ===")
+def run(
+    make_sample=False,
+):
+    logger.info(
+        "=== IOC toplama başladı ==="
+    )
+
+    init_db()
+
     fetcher = IOCFetcher()
+
     raw = {
-        "feodo": fetcher.fetch_feodo(),
-        "urlhaus": fetcher.fetch_urlhaus(),
-        "bazaar": fetcher.fetch_malwarebazaar(),
-        "spamhaus": fetcher.fetch_spamhaus(),
+        "feodo":
+            fetcher.fetch_feodo(),
+
+        "urlhaus":
+            fetcher.fetch_urlhaus(),
+
+        "bazaar":
+            fetcher.fetch_malwarebazaar(),
+
+        "spamhaus":
+            fetcher.fetch_spamhaus(),
     }
-    empty = [name for name, rows in raw.items() if not rows]
+
+    feed_metadata = (
+        fetcher.get_feed_metadata()
+    )
+
+    save_feed_runs(
+        feed_metadata
+    )
+
+    empty = [
+        name
+        for name, rows in raw.items()
+        if not rows
+    ]
+
     if empty:
-        logger.warning("Boş qayıdan feed-lər: %s", ", ".join(empty))
 
-    iocs = normalize_all(**raw)
+        logger.warning(
+            "Boş qayıdan feed-lər: %s",
+            ", ".join(empty),
+        )
+
+    iocs = normalize_all(
+        **raw,
+        feed_metadata=feed_metadata,
+    )
+
     if not iocs:
-        logger.error("Heç bir IOC alınmadı, DB yenilənmir.")
-        return
 
-    save_iocs_to_db(iocs)
+        logger.error(
+            "Heç bir IOC alınmadı, "
+            "mövcud DB qorunur."
+        )
+
+        return False
+
+    save_iocs_to_db(
+        iocs
+    )
+
     export_to_csv()
     export_to_json()
+
     if make_sample:
         export_sample()
-    logger.info("=== IOC toplama bitdi ===")
+
+    successful_feeds = sum(
+        1
+        for meta in feed_metadata.values()
+        if meta.get("status") == "success"
+    )
+
+    unique_iocs = len(
+        {
+            item["value"]
+            for item in iocs
+        }
+    )
+
+    logger.info(
+        "=== IOC toplama bitdi: "
+        "%d/4 feed uğurlu, "
+        "%d unikal IOC ===",
+        successful_feeds,
+        unique_iocs,
+    )
+
+    return True
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="OSINT IOC Collector")
-    parser.add_argument("--sample", action="store_true",
-                        help="sample_data/ qovluğunda nümunə dataset yarat")
+
+    parser = argparse.ArgumentParser(
+        description="OSINT IOC Collector"
+    )
+
+    parser.add_argument(
+        "--sample",
+        action="store_true",
+        help=(
+            "sample_data altında "
+            "nümunə dataset yarat"
+        ),
+    )
+
     args = parser.parse_args()
+
     setup_logging()
-    run(make_sample=args.sample)
+
+    run(
+        make_sample=args.sample
+    )
