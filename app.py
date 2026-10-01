@@ -36,7 +36,7 @@ try:
     st.sidebar.header("🔍 Süzgəc və Axtarış")
     selected_types = st.sidebar.multiselect("IOC Növü", df['ioc_type'].unique(), default=df['ioc_type'].unique())
     min_score = st.sidebar.slider("Minimum Risk Skoru", 0, 100, 30, 10)
-    search_query = st.sidebar.text_input("Axtarış (IP, URL, Hash)")
+    search_query = st.sidebar.text_input("Axtarış (IP, URL, Domain, Hash)")
 
     # Dataların filtrlənməsi
     filtered_df = df[(df['ioc_type'].isin(selected_types)) & (df['risk_score'] >= min_score)]

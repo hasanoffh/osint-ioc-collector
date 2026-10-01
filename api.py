@@ -21,7 +21,7 @@ def root():
 
 @app.get("/api/v1/iocs")
 def get_iocs(
-    ioc_type: str = Query(None, description="IP, URL və ya Hash üzrə filter et"),
+    ioc_type: str = Query(None, description="ip, url, domain, sha256 və ya cidr üzrə filter et"),
     min_risk: int = Query(0, description="Minimum risk skoru"),
     limit: int = Query(100, description="Qaytarılacaq maksimum sətir sayı")
 ):
