@@ -1,90 +1,115 @@
+import json
+import logging
+
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logger = logging.getLogger(__name__)
+
 
 class IOCFetcher:
-    def __init__(self):
-        # Açıq (Public/No-API-Key) Feed Linkləri
+    """Açıq (API key tələb etməyən) feed-lərdən xam data çəkir."""
+
+    def __init__(self, timeout=60):
         self.feodo_url = "https://feodotracker.abuse.ch/downloads/ipblocklist.json"
         self.urlhaus_url = "https://urlhaus.abuse.ch/downloads/json_recent/"
-        self.malwarebazaar_url = "https://bazaar.abuse.ch/export/json/recent/"
-        self.spamhaus_url = "https://www.spamhaus.org/drop/drop.txt"
+        self.malwarebazaar_url = "https://bazaar.abuse.ch/export/txt/sha256/recent/"
+        self.spamhaus_json_url = "https://www.spamhaus.org/drop/drop_v4.json"
+        self.spamhaus_txt_url = "https://www.spamhaus.org/drop/drop.txt"  # köhnə format (fallback)
+        self.timeout = timeout
 
-        self.headers = {
-            "User-Agent": "OSINT-IOC-Collector/1.0"
-        }
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": "OSINT-IOC-Collector/1.0"})
+        retry = Retry(total=3, backoff_factor=2,
+                      status_forcelist=[429, 500, 502, 503, 504],
+                      allowed_methods=["GET"])
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
+
+    def _get(self, name, url):
+        try:
+            res = self.session.get(url, timeout=self.timeout)
+            res.raise_for_status()
+            return res
+        except requests.RequestException as e:
+            logger.error("%s: sorğu uğursuz oldu (%s): %s", name, url, e)
+            return None
 
     def fetch_feodo(self):
-        """Feodo Tracker - Botnet C2 IP-ləri"""
+        """Feodo Tracker - botnet C2 IP-ləri"""
+        res = self._get("Feodo", self.feodo_url)
+        if res is None:
+            return []
         try:
-            res = requests.get(self.feodo_url, headers=self.headers, timeout=10)
-            if res.status_code == 200:
-                print("[+] Feodo Tracker-dən data çəkildi.")
-                return res.json()
-            print(f"[-] Feodo Xətası: Status {res.status_code}")
+            data = res.json()
+        except ValueError as e:
+            logger.error("Feodo: JSON parse xətası: %s", e)
             return []
-        except Exception as e:
-            print(f"[-] Feodo Bağlantı Xətası: {e}")
-            return []
+        if isinstance(data, dict):  # bəzi formatlarda {"blocklist": [...]} ola bilər
+            data = data.get("blocklist", [])
+        logger.info("Feodo Tracker: %d qeyd çəkildi", len(data))
+        return data
 
     def fetch_urlhaus(self):
-        """URLhaus - Zərərli URL-lər (Açıq JSON Export)"""
+        """URLhaus - zərərli URL-lər (son 30 gün, JSON)"""
+        res = self._get("URLhaus", self.urlhaus_url)
+        if res is None:
+            return []
         try:
-            res = requests.get(self.urlhaus_url, headers=self.headers, timeout=10)
-            if res.status_code == 200:
-                print("[+] URLhaus-dan data çəkildi.")
-                data = res.json()
-                # urlhaus json export formatında URL-lər dict dəyərləri kimi gəlir
-                urls = []
-                for key, val in data.items():
-                    if isinstance(val, list):
-                        urls.extend(val)
-                return urls
-            print(f"[-] URLhaus Xətası: Status {res.status_code}")
+            data = res.json()
+        except ValueError as e:
+            logger.error("URLhaus: JSON parse xətası: %s", e)
             return []
-        except Exception as e:
-            print(f"[-] URLhaus Bağlantı Xətası: {e}")
-            return []
+        if isinstance(data, list):
+            urls = data
+        else:  # {"<id>": [ {...} ], ...}
+            urls = []
+            for val in data.values():
+                if isinstance(val, list):
+                    urls.extend(val)
+        logger.info("URLhaus: %d qeyd çəkildi", len(urls))
+        return urls
 
     def fetch_malwarebazaar(self):
-        """MalwareBazaar - Son zərərli fayl hash-ləri (Açıq Text Feed)"""
-        # API yerinə 100% işləyən son 60 dəqiqəlik hash export URL-i
-        bazaar_url = "https://bazaar.abuse.ch/export/txt/sha256/recent/"
-        try:
-            res = requests.get(bazaar_url, headers=self.headers, timeout=10)
-            if res.status_code == 200:
-                print("[+] MalwareBazaar-dan data uğurla çəkildi.")
-                lines = res.text.splitlines()
-                hashes = []
-                for line in lines:
-                    line = line.strip()
-                    # Şərh olmayan sətirlərdən SHA256 hash-ləri oxuyuruq
-                    if line and not line.startswith("#"):
-                        hashes.append({"sha256_hash": line})
-                return hashes
-            print(f"[-] MalwareBazaar Xətası: Status {res.status_code}")
+        """MalwareBazaar - son 60 dəqiqənin SHA256 hash-ləri (text)"""
+        res = self._get("MalwareBazaar", self.malwarebazaar_url)
+        if res is None:
             return []
-        except Exception as e:
-            print(f"[-] MalwareBazaar Bağlantı Xətası: {e}")
-            return []
+        hashes = [{"sha256_hash": line.strip()}
+                  for line in res.text.splitlines()
+                  if line.strip() and not line.startswith("#")]
+        logger.info("MalwareBazaar: %d hash çəkildi", len(hashes))
+        return hashes
 
     def fetch_spamhaus(self):
-        """Spamhaus DROP - Zərərli Şəbəkə Blokları (CIDR)"""
-        try:
-            res = requests.get(self.spamhaus_url, headers=self.headers, timeout=10)
-            if res.status_code == 200:
-                print("[+] Spamhaus DROP-dan data çəkildi.")
-                lines = res.text.splitlines()
-                cidr_list = []
-                for line in lines:
-                    line = line.strip()
-                    # Şərh olmayan və CIDR olan sətirlər (məs: 1.10.16.0/20)
-                    if line and not line.startswith(";"):
-                        parts = line.split(";")
-                        cidr = parts[0].strip()
-                        sbl = parts[1].strip() if len(parts) > 1 else "DROP"
-                        cidr_list.append({"cidr": cidr, "sbl": sbl})
-                return cidr_list
-            print(f"[-] Spamhaus Xətası: Status {res.status_code}")
+        """Spamhaus DROP - zərərli şəbəkə blokları (CIDR). Əvvəl JSON, alınmasa köhnə txt."""
+        res = self._get("Spamhaus (json)", self.spamhaus_json_url)
+        if res is not None:
+            rows = []
+            for line in res.text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except ValueError:
+                    continue
+                if "cidr" in obj:
+                    rows.append({"cidr": obj["cidr"], "sbl": obj.get("sblid", "DROP")})
+            if rows:
+                logger.info("Spamhaus DROP (json): %d CIDR çəkildi", len(rows))
+                return rows
+            logger.warning("Spamhaus JSON boş/uyğunsuz gəldi, txt-yə keçilir")
+
+        res = self._get("Spamhaus (txt)", self.spamhaus_txt_url)
+        if res is None:
             return []
-        except Exception as e:
-            print(f"[-] Spamhaus Bağlantı Xətası: {e}")
-            return []
+        rows = []
+        for line in res.text.splitlines():
+            line = line.strip()
+            if line and not line.startswith(";"):
+                parts = line.split(";")
+                rows.append({"cidr": parts[0].strip(),
+                             "sbl": parts[1].strip() if len(parts) > 1 else "DROP"})
+        logger.info("Spamhaus DROP (txt): %d CIDR çəkildi", len(rows))
+        return rows

@@ -1,46 +1,57 @@
-from fetchers import IOCFetcher
-from normalizer import IOCNormalizer
-from storage import save_iocs_to_db, export_to_csv, export_to_json
-from scorer import recalculate_all_scores
+import argparse
+import logging
 import os
+from logging.handlers import RotatingFileHandler
 
-def main():
-    print("[*] OSINT IOC Collector başladılır...")
-    
-    # 1. Məlumatların Çəkilməsi
+from fetchers import IOCFetcher
+from normalizer import normalize_all
+from storage import export_sample, export_to_csv, export_to_json, save_iocs_to_db
+
+logger = logging.getLogger("collector")
+
+
+def setup_logging(log_path="data/collector.log"):
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s")
+    file_h = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+    file_h.setFormatter(fmt)
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.handlers = [file_h, console]
+
+
+def run(make_sample=False):
+    logger.info("=== IOC toplama başladı ===")
     fetcher = IOCFetcher()
-    print("\n1. 4 Açıq Data Mənbəsindən Toplanılır...")
-    raw_feodo = fetcher.fetch_feodo()
-    raw_urlhaus = fetcher.fetch_urlhaus()
-    raw_bazaar = fetcher.fetch_malwarebazaar()
-    raw_spamhaus = fetcher.fetch_spamhaus()
-    
-    # 2. Normallaşdırma (Parsing & Normalization)
-    normalizer = IOCNormalizer()
-    print("\n2. Data Normallaşdırılır və Vahid Sxemə Gətirilir...")
-    
-    normalized_data = []
-    # Demoda sürətli olması üçün hərəsindən ilk 20 və ya hamısını götürə bilərsən. 
-    # Tam baza üçün [:-1] limitlərini yığışdırıb tam siyahını ötürürük:
-    normalized_data.extend(normalizer.normalize_feodo(raw_feodo))
-    normalized_data.extend(normalizer.normalize_urlhaus(raw_urlhaus))
-    normalized_data.extend(normalizer.normalize_malwarebazaar(raw_bazaar))
-    normalized_data.extend(normalizer.normalize_spamhaus(raw_spamhaus))
-    
-    print(f"[+] Toplam normallaşdırılmış xam IOC sayı: {len(normalized_data)}")
-    
-    # 3. Bazaya yaz və Deduplikasiya tətbiq et (UPSERT)
-    save_iocs_to_db(normalized_data)
-    print("[+] Datalar bazaya yazıldı və dublikatlar təmizləndi.")
-    
-    # 4. Risk Skorlarını Yenidən Hesabla
-    recalculate_all_scores()
-    print("[+] Dinamik risk skorları hesablandı.")
-    
-    # 5. CSV və JSON export et
+    raw = {
+        "feodo": fetcher.fetch_feodo(),
+        "urlhaus": fetcher.fetch_urlhaus(),
+        "bazaar": fetcher.fetch_malwarebazaar(),
+        "spamhaus": fetcher.fetch_spamhaus(),
+    }
+    empty = [name for name, rows in raw.items() if not rows]
+    if empty:
+        logger.warning("Boş qayıdan feed-lər: %s", ", ".join(empty))
+
+    iocs = normalize_all(**raw)
+    if not iocs:
+        logger.error("Heç bir IOC alınmadı, DB yenilənmir.")
+        return
+
+    save_iocs_to_db(iocs)
     export_to_csv()
     export_to_json()
-    print("[+] CSV və JSON export faylları yaradıldı: data/ioc_export.csv")
+    if make_sample:
+        export_sample()
+    logger.info("=== IOC toplama bitdi ===")
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="OSINT IOC Collector")
+    parser.add_argument("--sample", action="store_true",
+                        help="sample_data/ qovluğunda nümunə dataset yarat")
+    args = parser.parse_args()
+    setup_logging()
+    run(make_sample=args.sample)

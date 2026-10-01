@@ -1,5 +1,10 @@
-data/
 cron.log
-__pycache__/
-*.pyc
+/data/
 .env
+*.pyc
+__pycache__/
+venv/
+site/data/
+dbstore/
+site/data/
+dbstore/
