@@ -1,0 +1,55 @@
+name: collect-and-publish
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # hər saat
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # DB runlar arasında `data` branch-ında saxlanılır (first_seen/seen_count itməsin)
+      - name: Restore DB
+        run: |
+          mkdir -p data
+          git fetch origin data --depth=1 || true
+          git show origin/data:iocs.db > data/iocs.db || rm -f data/iocs.db
+
+      - run: python main.py
+      - run: python scripts/export_site.py
+
+      - name: Publish site (gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          force_orphan: true
+
+      - name: Stage DB
+        run: mkdir -p dbstore && cp data/iocs.db dbstore/iocs.db
+
+      - name: Save DB (data branch)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dbstore
+          publish_branch: data
+          force_orphan: true

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSINT IOC Collector – açıq təhdid indikatorları</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#101820;--mute:#5b6773;--line:#d5dce3;--acc:#0b6e8a;--hi:#b3261e;--mid:#a15c00;--lo:#4a5866}
+@media (prefers-color-scheme:dark){:root{--bg:#0f151b;--panel:#18212a;--ink:#e6ebf0;--mute:#97a4b1;--line:#2b3742;--acc:#5cc3e0;--hi:#ff8a80;--mid:#f5b45a;--lo:#9fb0c0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 20px;max-width:70ch}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tab{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+.tab[aria-selected=true]{border-color:var(--acc);box-shadow:inset 0 -3px 0 var(--acc)}
+.tab b{font-family:"IBM Plex Mono",monospace;font-weight:500;margin-left:6px;color:var(--mute)}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
+.bar input[type=search]{flex:1 1 260px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit}
+.bar label{color:var(--mute);display:flex;gap:8px;align-items:center}
+a.dl{color:var(--acc);margin-left:auto}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--mute);font-size:13px}
+td.v{font-family:"IBM Plex Mono",monospace;font-size:13px;word-break:break-all;min-width:260px}
+td.v small{display:block;font-family:"IBM Plex Sans",sans-serif;color:var(--mute);font-size:12px;margin-top:2px}
+.s{font-family:"IBM Plex Mono",monospace;font-weight:500}
+.s.hi{color:var(--hi)}.s.mid{color:var(--mid)}.s.lo{color:var(--lo)}
+.pg{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:12px;color:var(--mute)}
+.pg button{padding:6px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;cursor:pointer}
+.pg button:disabled{opacity:.4;cursor:default}
+.note{margin-top:28px;color:var(--mute);font-size:13px;max-width:80ch}
+#msg{padding:24px;color:var(--mute)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>OSINT IOC Collector</h1>
+  <p class="sub">Açıq mənbələrdən (Feodo Tracker, URLhaus, MalwareBazaar) toplanan, təmizlənmiş və risk skoru verilmiş təhdid indikatorları. Qeydiyyat və kod yükləmək lazım deyil. Axtarın və ya CSV/JSON endirin.</p>
+  <p class="sub" id="upd"></p>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Dəyər və ya təsvir üzrə axtar" aria-label="Axtarış">
+    <label>Minimum skor <input type="range" id="min" min="0" max="100" value="0"> <span id="minv" class="s">0</span></label>
+    <a class="dl" id="dlcsv" href="#">CSV endir</a>
+    <a class="dl" id="dljson" href="#" style="margin-left:0">JSON endir</a>
+  </div>
+  <div class="tbl"><div id="msg">Yüklənir…</div>
+    <table id="t" hidden><thead><tr><th>Dəyər</th><th>Skor</th><th>Mənbə</th><th>Görünmə</th><th>Son görünmə</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="pg"><span id="cnt"></span><button id="prev">Əvvəlki</button><button id="next">Növbəti</button></div>
+  <p class="note">Bu data məlumat məqsədlidir. Skor avtomatik hesablanır, false-positive ola bilər, bloklamadan əvvəl yoxlayın. Zərərli URL-lər kliklənəbilən link kimi göstərilmir. Mənbələr: abuse.ch (CC0).</p>
+</main>
+<script>
+const $=s=>document.querySelector(s), PS=100;
+let stats, rows=[], type, page=0, view=[];
+const j=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u+' → '+r.status);return r.json()};
+const cls=n=>n>=70?'hi':n>=50?'mid':'lo';
+async function init(){
+  try{
+    stats=await j('data/stats.json');
+    $('#upd').textContent='Son yenilənmə: '+stats.generated_at+' · cəmi '+stats.total.toLocaleString()+' indikator';
+    const tabs=$('#tabs');
+    Object.entries(stats.by_type).forEach(([t,n],i)=>{
+      const b=document.createElement('button');b.className='tab';b.setAttribute('role','tab');
+      b.innerHTML=t+'<b>'+n.toLocaleString()+'</b>';b.onclick=()=>load(t);b.dataset.t=t;tabs.append(b);
+    });
+    load(Object.keys(stats.by_type)[0]);
+  }catch(e){$('#msg').textContent='Data yüklənmədi: '+e.message+'. Səhifəni yeniləyin və ya bir az sonra yenidən cəhd edin.'}
+}
+async function load(t){
+  type=t;page=0;$('#msg').hidden=false;$('#msg').textContent='Yüklənir…';$('#t').hidden=true;
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
+  $('#dlcsv').href='data/'+t+'.csv';$('#dljson').href='data/'+t+'.json';
+  try{rows=await j('data/'+t+'.json')}catch(e){$('#msg').textContent='Bu tip yüklənmədi: '+e.message;return}
+  render();
+}
+function render(){
+  const q=$('#q').value.trim().toLowerCase(), m=+$('#min').value;
+  view=rows.filter(r=>r[1]>=m&&(!q||r[0].toLowerCase().includes(q)||(r[6]||'').toLowerCase().includes(q)));
+  const pages=Math.max(1,Math.ceil(view.length/PS));page=Math.min(page,pages-1);
+  const tb=$('#t tbody');tb.innerHTML='';
+  view.slice(page*PS,page*PS+PS).forEach(r=>{
+    const tr=document.createElement('tr');
+    const v=document.createElement('td');v.className='v';v.textContent=r[0];
+    if(r[6]){const s=document.createElement('small');s.textContent=r[6];v.append(s)}
+    const sc=document.createElement('td');sc.innerHTML='<span class="s '+cls(r[1])+'">'+r[1]+'</span>';
+    [v,sc,r[2],r[3],(r[5]||'').slice(0,10)].forEach(c=>{if(c instanceof Node)tr.append(c);else{const d=document.createElement('td');d.textContent=c;tr.append(d)}});
+    tb.append(tr);
+  });
+  $('#msg').hidden=view.length>0;$('#msg').textContent='Filtrə uyğun nəticə yoxdur. Axtarışı və ya minimum skoru dəyişin.';
+  $('#t').hidden=!view.length;
+  $('#cnt').textContent=view.length.toLocaleString()+' nəticə · səhifə '+(page+1)+'/'+pages;
+  $('#prev').disabled=page===0;$('#next').disabled=page>=pages-1;
+}
+$('#q').oninput=()=>{page=0;render()};
+$('#min').oninput=e=>{$('#minv').textContent=e.target.value;page=0;render()};
+$('#prev').onclick=()=>{page--;render();scrollTo(0,0)};
+$('#next').onclick=()=>{page++;render();scrollTo(0,0)};
+init();
+</script>
+</body>
+</html>
