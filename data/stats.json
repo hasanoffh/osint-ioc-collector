@@ -1,0 +1,150 @@
+{
+  "generated_at": "2026-10-04T00:13:55+00:00",
+  "total": 22627,
+  "by_type": {
+    "cidr": 1692,
+    "domain": 529,
+    "ip": 5,
+    "sha256": 2970,
+    "url": 17431
+  },
+  "by_risk_level": {
+    "critical": 0,
+    "high": 4546,
+    "medium": 16569,
+    "low": 1512,
+    "info": 0
+  },
+  "multi_source": 0,
+  "feed_count": 4,
+  "feeds": [
+    {
+      "source": "Feodo Tracker",
+      "fetched_at": "2026-10-04T00:13:48+00:00",
+      "status": "success",
+      "http_status": 200,
+      "http_last_modified": "Tue, 30 Jun 2026 04:53:05 GMT",
+      "etag": "\"6e3-6557159bdf633\"",
+      "feed_updated_at": "Tue, 30 Jun 2026 04:53:05 GMT",
+      "row_count": 5,
+      "source_url": "https://feodotracker.abuse.ch/downloads/ipblocklist.json",
+      "error": null,
+      "description": "Botnet C2 IP ünvanları",
+      "ioc_types": [
+        "ip"
+      ]
+    },
+    {
+      "source": "MalwareBazaar",
+      "fetched_at": "2026-10-04T00:13:49+00:00",
+      "status": "success",
+      "http_status": 200,
+      "http_last_modified": "Sun, 04 Oct 2026 00:00:02 GMT",
+      "etag": "\"f6a4-65cf87280d5c2-gzip\"",
+      "feed_updated_at": "2026-10-03 23:56:34 UTC",
+      "row_count": 949,
+      "source_url": "https://bazaar.abuse.ch/export/txt/sha256/recent/",
+      "error": null,
+      "description": "Son malware nümunələrinin SHA256 hash-ləri",
+      "ioc_types": [
+        "sha256"
+      ]
+    },
+    {
+      "source": "Spamhaus DROP",
+      "fetched_at": "2026-10-04T00:13:49+00:00",
+      "status": "success",
+      "http_status": 200,
+      "http_last_modified": "Sat, 03 Oct 2026 18:50:33 GMT",
+      "etag": null,
+      "feed_updated_at": "2026-10-03T23:44:02+00:00",
+      "row_count": 1692,
+      "source_url": "https://www.spamhaus.org/drop/drop_v4.json",
+      "error": null,
+      "description": "DROP şəbəkə blokları (CIDR)",
+      "ioc_types": [
+        "cidr"
+      ]
+    },
+    {
+      "source": "URLhaus",
+      "fetched_at": "2026-10-04T00:13:48+00:00",
+      "status": "success",
+      "http_status": 200,
+      "http_last_modified": "Sun, 04 Oct 2026 00:05:45 GMT",
+      "etag": "\"74315e-65cf886ea9d83\"",
+      "feed_updated_at": "Sun, 04 Oct 2026 00:05:45 GMT",
+      "row_count": 16003,
+      "source_url": "https://urlhaus.abuse.ch/downloads/json_recent/",
+      "error": null,
+      "description": "Zərərli URL-lər və onlardan çıxarılan domenlər",
+      "ioc_types": [
+        "url",
+        "domain"
+      ]
+    }
+  ],
+  "risk_model": {
+    "name": "Explainable Threat Score v2",
+    "range": "0-100",
+    "components": [
+      {
+        "name": "Source confidence",
+        "max": 40,
+        "description": "Feed-in layihədə müəyyən edilmiş mənbə çəkisi."
+      },
+      {
+        "name": "Freshness",
+        "max": 30,
+        "description": "Mənbədəki ən yeni aktivlik/timestamp-ə görə zaman faktoru."
+      },
+      {
+        "name": "Corroboration",
+        "max": 20,
+        "description": "Eyni IOC-nin müstəqil feed-lərdə təsdiqi."
+      },
+      {
+        "name": "Persistence",
+        "max": 10,
+        "description": "IOC-nin ayrıca toplama dövrlərində təkrar müşahidəsi."
+      }
+    ],
+    "bands": [
+      {
+        "name": "critical",
+        "min": 85
+      },
+      {
+        "name": "high",
+        "min": 70
+      },
+      {
+        "name": "medium",
+        "min": 50
+      },
+      {
+        "name": "low",
+        "min": 30
+      },
+      {
+        "name": "info",
+        "min": 0
+      }
+    ],
+    "note": "Mənbə çəkiləri layihənin explainable scoring modelinə aiddir və vendor tərəfindən verilmiş risk reytinqi deyil."
+  },
+  "field_definitions": {
+    "source_first_seen": "IOC-nin mənbədə ilk görülməsi üçün feed-dən gələn timestamp.",
+    "source_last_seen": "Mənbə həmin sahəni verirsə son aktivlik timestamp-i.",
+    "feed_updated_at": "Mənbənin feed-level yenilənmə timestamp-i.",
+    "collector_first_seen": "Collector tərəfindən IOC-nin ilk müşahidə edildiyi vaxt.",
+    "collector_last_seen": "Collector tərəfindən IOC-nin son müşahidə edildiyi vaxt.",
+    "seen_count": "IOC-nin uğurlu collection run-larında neçə dəfə görüldüyü."
+  },
+  "source_attribution": {
+    "Feodo Tracker": "https://feodotracker.abuse.ch/",
+    "URLhaus": "https://urlhaus.abuse.ch/",
+    "MalwareBazaar": "https://bazaar.abuse.ch/",
+    "Spamhaus DROP": "https://www.spamhaus.org/drop/"
+  }
+}

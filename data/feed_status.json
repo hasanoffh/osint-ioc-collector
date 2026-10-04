@@ -1,0 +1,67 @@
+[
+  {
+    "source": "Feodo Tracker",
+    "fetched_at": "2026-10-04T00:13:48+00:00",
+    "status": "success",
+    "http_status": 200,
+    "http_last_modified": "Tue, 30 Jun 2026 04:53:05 GMT",
+    "etag": "\"6e3-6557159bdf633\"",
+    "feed_updated_at": "Tue, 30 Jun 2026 04:53:05 GMT",
+    "row_count": 5,
+    "source_url": "https://feodotracker.abuse.ch/downloads/ipblocklist.json",
+    "error": null,
+    "description": "Botnet C2 IP ünvanları",
+    "ioc_types": [
+      "ip"
+    ]
+  },
+  {
+    "source": "MalwareBazaar",
+    "fetched_at": "2026-10-04T00:13:49+00:00",
+    "status": "success",
+    "http_status": 200,
+    "http_last_modified": "Sun, 04 Oct 2026 00:00:02 GMT",
+    "etag": "\"f6a4-65cf87280d5c2-gzip\"",
+    "feed_updated_at": "2026-10-03 23:56:34 UTC",
+    "row_count": 949,
+    "source_url": "https://bazaar.abuse.ch/export/txt/sha256/recent/",
+    "error": null,
+    "description": "Son malware nümunələrinin SHA256 hash-ləri",
+    "ioc_types": [
+      "sha256"
+    ]
+  },
+  {
+    "source": "Spamhaus DROP",
+    "fetched_at": "2026-10-04T00:13:49+00:00",
+    "status": "success",
+    "http_status": 200,
+    "http_last_modified": "Sat, 03 Oct 2026 18:50:33 GMT",
+    "etag": null,
+    "feed_updated_at": "2026-10-03T23:44:02+00:00",
+    "row_count": 1692,
+    "source_url": "https://www.spamhaus.org/drop/drop_v4.json",
+    "error": null,
+    "description": "DROP şəbəkə blokları (CIDR)",
+    "ioc_types": [
+      "cidr"
+    ]
+  },
+  {
+    "source": "URLhaus",
+    "fetched_at": "2026-10-04T00:13:48+00:00",
+    "status": "success",
+    "http_status": 200,
+    "http_last_modified": "Sun, 04 Oct 2026 00:05:45 GMT",
+    "etag": "\"74315e-65cf886ea9d83\"",
+    "feed_updated_at": "Sun, 04 Oct 2026 00:05:45 GMT",
+    "row_count": 16003,
+    "source_url": "https://urlhaus.abuse.ch/downloads/json_recent/",
+    "error": null,
+    "description": "Zərərli URL-lər və onlardan çıxarılan domenlər",
+    "ioc_types": [
+      "url",
+      "domain"
+    ]
+  }
+]
