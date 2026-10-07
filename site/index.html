@@ -1,3590 +1,998 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>OSINT IOC Collector | Threat Intelligence</title>
-
-  <meta
-    name="description"
-    content="Açıq threat-intelligence feed-lərindən avtomatik toplanan IOC bazası."
-  >
-
-  <meta name="color-scheme" content="light">
-
-  <style>
-    :root{
-      --bg:#f4f6f8;
-      --panel:#ffffff;
-      --panel-soft:#f8fafb;
-      --ink:#17212b;
-      --muted:#65727e;
-      --line:#d9e0e6;
-      --line-strong:#c4cdd5;
-      --accent:#176b87;
-      --accent-dark:#0d5068;
-      --accent-soft:#e8f2f5;
-
-      --critical:#a92828;
-      --critical-bg:#fbeaea;
-
-      --high:#c65f1d;
-      --high-bg:#fff1e8;
-
-      --medium:#9a6b08;
-      --medium-bg:#fff7db;
-
-      --low:#236b42;
-      --low-bg:#eaf7ef;
-
-      --info:#576574;
-      --info-bg:#edf1f4;
-
-      --shadow:
-        0 1px 2px rgba(20,34,45,.04),
-        0 8px 24px rgba(20,34,45,.05);
-
-      --radius:10px;
-    }
-
-    *{
-      box-sizing:border-box;
-    }
-
-    html{
-      scroll-behavior:smooth;
-    }
-
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--ink);
-      font:
-        14px/1.5
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-    }
-
-    button,
-    input,
-    select{
-      font:inherit;
-    }
-
-    button{
-      cursor:pointer;
-    }
-
-    a{
-      color:inherit;
-    }
-
-    .shell{
-      max-width:1440px;
-      margin:0 auto;
-      padding:24px 24px 56px;
-    }
-
-    .topbar{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:24px;
-      margin-bottom:18px;
-    }
-
-    .brand-row{
-      display:flex;
-      gap:12px;
-      align-items:flex-start;
-    }
-
-    .mark{
-      width:36px;
-      height:36px;
-      flex:none;
-      border:1px solid var(--line-strong);
-      background:var(--panel);
-      border-radius:8px;
-      display:grid;
-      place-items:center;
-      color:var(--accent);
-      font-weight:800;
-      letter-spacing:.04em;
-    }
-
-    h1{
-      font-size:22px;
-      line-height:1.2;
-      margin:0 0 3px;
-      letter-spacing:-.01em;
-    }
-
-    .subtitle{
-      margin:0;
-      color:var(--muted);
-      max-width:780px;
-    }
-
-    .timestamp{
-      color:var(--muted);
-      font-size:12px;
-      text-align:right;
-      white-space:nowrap;
-    }
-
-    .stats{
-      display:grid;
-      grid-template-columns:
-        repeat(4,minmax(0,1fr));
-      gap:12px;
-      margin-bottom:18px;
-    }
-
-    .stat{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      padding:15px 16px;
-      box-shadow:var(--shadow);
-    }
-
-    .stat-label{
-      font-size:12px;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-
-    .stat-value{
-      font-size:26px;
-      font-weight:700;
-      margin-top:3px;
-      letter-spacing:-.03em;
-    }
-
-    .stat-detail{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:2px;
-    }
-
-    .panel{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-    }
-
-    .feed-panel{
-      padding:16px;
-      margin-bottom:18px;
-    }
-
-    .section-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:14px;
-      margin-bottom:12px;
-    }
-
-    .section-title{
-      font-weight:700;
-      font-size:14px;
-    }
-
-    .section-note{
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .feed-grid{
-      display:grid;
-      grid-template-columns:
-        repeat(4,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .feed{
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:12px;
-      background:var(--panel-soft);
-      min-width:0;
-    }
-
-    .feed-top{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:7px;
-    }
-
-    .dot{
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background:#9da8b1;
-      flex:none;
-    }
-
-    .dot.ok{
-      background:#2f8b58;
-    }
-
-    .dot.bad{
-      background:#b72c2c;
-    }
-
-    .dot.wait{
-      background:#ac7b13;
-    }
-
-    .feed-name{
-      font-weight:650;
-      min-width:0;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-
-    .feed-state{
-      margin-left:auto;
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    .feed-desc{
-      color:var(--muted);
-      font-size:12px;
-      min-height:36px;
-    }
-
-    .feed-meta{
-      margin-top:9px;
-      padding-top:9px;
-      border-top:1px solid var(--line);
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    .feed-meta b{
-      color:var(--ink);
-      font-weight:600;
-    }
-
-    .controls{
-      padding:13px;
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      gap:9px;
-      border-bottom:1px solid var(--line);
-    }
-
-    .tabs{
-      display:flex;
-      gap:6px;
-      overflow:auto;
-      padding-bottom:1px;
-      flex:1 1 100%;
-    }
-
-    .tab{
-      border:1px solid var(--line);
-      background:var(--panel);
-      color:var(--muted);
-      padding:7px 10px;
-      border-radius:7px;
-      white-space:nowrap;
-    }
-
-    .tab:hover{
-      border-color:var(--line-strong);
-      color:var(--ink);
-    }
-
-    .tab.active{
-      color:var(--accent-dark);
-      background:var(--accent-soft);
-      border-color:#b8d5df;
-      font-weight:650;
-    }
-
-    .tab-count{
-      color:inherit;
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      font-size:12px;
-      margin-left:6px;
-    }
-
-    .control-item{
-      display:flex;
-      align-items:center;
-      gap:7px;
-      color:var(--muted);
-      font-size:12px;
-      min-height:34px;
-    }
-
-    .search{
-      min-width:260px;
-      flex:1 1 300px;
-    }
-
-    .search input,
-    .select,
-    .range-wrap{
-      height:34px;
-      border:1px solid var(--line);
-      border-radius:7px;
-      background:#fff;
-      color:var(--ink);
-      outline:none;
-    }
-
-    .search input{
-      width:100%;
-      padding:0 11px;
-    }
-
-    .search input:focus,
-    .select:focus{
-      border-color:#8ebac8;
-      box-shadow:0 0 0 3px #e8f2f5;
-    }
-
-    .select{
-      padding:0 30px 0 9px;
-    }
-
-    .range-wrap{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:0 9px;
-    }
-
-    .range-wrap input{
-      accent-color:var(--accent);
-    }
-
-    .score-number{
-      min-width:25px;
-      text-align:right;
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      color:var(--ink);
-    }
-
-    .actions{
-      display:flex;
-      gap:7px;
-    }
-
-    .btn{
-      height:34px;
-      border:1px solid var(--line);
-      background:var(--panel);
-      color:var(--ink);
-      padding:0 11px;
-      border-radius:7px;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      font-size:13px;
-      font-weight:600;
-    }
-
-    .btn:hover{
-      background:var(--panel-soft);
-      border-color:var(--line-strong);
-    }
-
-    .btn.primary{
-      background:var(--accent);
-      border-color:var(--accent);
-      color:#fff;
-    }
-
-    .btn.primary:hover{
-      background:var(--accent-dark);
-    }
-
-    .table-wrap{
-      overflow:auto;
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width:970px;
-    }
-
-    th,
-    td{
-      padding:11px 13px;
-      border-bottom:1px solid var(--line);
-      text-align:left;
-      vertical-align:middle;
-    }
-
-    th{
-      color:var(--muted);
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-      background:#fbfcfd;
-      position:sticky;
-      top:0;
-      z-index:1;
-    }
-
-    tbody tr{
-      transition:background .12s;
-    }
-
-    tbody tr:hover{
-      background:#f7fafb;
-    }
-
-    td.value-cell{
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      font-size:12px;
-      max-width:360px;
-    }
-
-    .value-btn{
-      border:0;
-      background:none;
-      padding:0;
-      color:var(--accent-dark);
-      text-align:left;
-      word-break:break-all;
-      font:inherit;
-    }
-
-    .value-btn:hover{
-      text-decoration:underline;
-    }
-
-    .type-badge{
-      display:inline-flex;
-      align-items:center;
-      padding:3px 7px;
-      border:1px solid var(--line);
-      border-radius:5px;
-      background:var(--panel-soft);
-      font-size:11px;
-      font-weight:650;
-      color:var(--muted);
-    }
-
-    .risk{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:4px 7px;
-      border-radius:6px;
-      font-size:11px;
-      font-weight:700;
-      border:1px solid transparent;
-    }
-
-    .risk strong{
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-    }
-
-    .risk.critical{
-      background:var(--critical-bg);
-      color:var(--critical);
-      border-color:#f0cccc;
-    }
-
-    .risk.high{
-      background:var(--high-bg);
-      color:var(--high);
-      border-color:#f3d5c3;
-    }
-
-    .risk.medium{
-      background:var(--medium-bg);
-      color:var(--medium);
-      border-color:#eadca8;
-    }
-
-    .risk.low{
-      background:var(--low-bg);
-      color:var(--low);
-      border-color:#cfe6d8;
-    }
-
-    .risk.info{
-      background:var(--info-bg);
-      color:var(--info);
-      border-color:#dce2e6;
-    }
-
-    .source-list{
-      display:flex;
-      gap:5px;
-      flex-wrap:wrap;
-    }
-
-    .source-pill{
-      border:1px solid var(--line);
-      background:#f8fafb;
-      border-radius:5px;
-      padding:3px 6px;
-      font-size:10px;
-      color:#4e5d68;
-      white-space:nowrap;
-    }
-
-    .muted{
-      color:var(--muted);
-    }
-
-    .mono{
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      font-size:11px;
-    }
-
-    .table-footer{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 13px;
-    }
-
-    .result-count{
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .pager{
-      display:flex;
-      gap:6px;
-    }
-
-    .page-btn{
-      height:31px;
-      min-width:31px;
-      border:1px solid var(--line);
-      background:var(--panel);
-      border-radius:6px;
-      color:var(--ink);
-    }
-
-    .page-btn:disabled{
-      opacity:.4;
-      cursor:not-allowed;
-    }
-
-    .below{
-      display:grid;
-      grid-template-columns:1.15fr .85fr;
-      gap:18px;
-      margin-top:18px;
-    }
-
-    .info-panel{
-      padding:16px;
-    }
-
-    .score-layout{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      margin-top:10px;
-    }
-
-    .score-item{
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:11px;
-      background:var(--panel-soft);
-    }
-
-    .score-item-top{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .score-item-name{
-      font-weight:650;
-    }
-
-    .score-item-max{
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      color:var(--muted);
-    }
-
-    .score-item p{
-      margin:4px 0 0;
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .band-row{
-      display:grid;
-      grid-template-columns:90px 1fr;
-      gap:8px;
-      padding:7px 0;
-      border-bottom:1px solid var(--line);
-      font-size:12px;
-    }
-
-    .band-row:last-child{
-      border-bottom:0;
-    }
-
-    .band-name{
-      text-transform:capitalize;
-      font-weight:700;
-    }
-
-    .footer-note{
-      color:var(--muted);
-      font-size:12px;
-      margin-top:18px;
-      line-height:1.65;
-    }
-
-    .footer-note a{
-      color:var(--accent-dark);
-      text-decoration:none;
-    }
-
-    .footer-note a:hover{
-      text-decoration:underline;
-    }
-
-    .empty{
-      padding:50px 20px;
-      text-align:center;
-      color:var(--muted);
-    }
-
-    .modal{
-      position:fixed;
-      inset:0;
-      background:rgba(20,30,38,.42);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      z-index:20;
-    }
-
-    .modal.show{
-      display:flex;
-    }
-
-    .modal-card{
-      width:min(960px,100%);
-      max-height:min(88vh,900px);
-      overflow:auto;
-      background:var(--panel);
-      border:1px solid var(--line-strong);
-      border-radius:12px;
-      box-shadow:
-        0 20px 60px
-        rgba(18,30,40,.2);
-    }
-
-    .modal-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      padding:17px;
-      border-bottom:1px solid var(--line);
-      position:sticky;
-      top:0;
-      background:rgba(255,255,255,.97);
-      z-index:1;
-    }
-
-    .modal-title{
-      font-size:16px;
-      font-weight:700;
-      margin:0 0 3px;
-    }
-
-    .modal-value{
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-      font-size:12px;
-      word-break:break-all;
-      color:var(--muted);
-    }
-
-    .close{
-      width:32px;
-      height:32px;
-      border:1px solid var(--line);
-      background:#fff;
-      border-radius:7px;
-      color:var(--muted);
-    }
-
-    .modal-body{
-      padding:17px;
-    }
-
-    .detail-grid{
-      display:grid;
-      grid-template-columns:
-        repeat(3,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .detail{
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:10px;
-      background:var(--panel-soft);
-    }
-
-    .detail-label{
-      font-size:11px;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-
-    .detail-value{
-      margin-top:4px;
-      font-weight:650;
-      word-break:break-word;
-    }
-
-    .detail-section{
-      margin-top:16px;
-    }
-
-    .detail-section h3{
-      font-size:13px;
-      margin:0 0 9px;
-    }
-
-    .score-breakdown{
-      display:grid;
-      grid-template-columns:
-        repeat(4,1fr);
-      gap:9px;
-    }
-
-    .score-box{
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:10px;
-      background:#fff;
-    }
-
-    .score-box .n{
-      font-size:20px;
-      font-weight:750;
-    }
-
-    .score-box .l{
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    .source-detail{
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:11px;
-      margin-top:8px;
-    }
-
-    .source-detail-head{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .source-detail-name{
-      font-weight:700;
-    }
-
-    .source-detail-ref{
-      font-size:11px;
-      color:var(--muted);
-      font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        monospace;
-    }
-
-    .source-detail-grid{
-      display:grid;
-      grid-template-columns:
-        repeat(2,minmax(0,1fr));
-      gap:8px;
-      margin-top:9px;
-    }
-
-    .mini-label{
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    .mini-value{
-      font-size:12px;
-      margin-top:2px;
-      word-break:break-word;
-    }
-
-    .modal-actions{
-      margin-top:14px;
-      display:flex;
-      gap:7px;
-    }
-
-    @media (max-width:1100px){
-
-      .stats{
-        grid-template-columns:
-          repeat(2,1fr);
-      }
-
-      .feed-grid{
-        grid-template-columns:
-          repeat(2,1fr);
-      }
-
-      .below{
-        grid-template-columns:1fr;
-      }
-    }
-
-    @media (max-width:700px){
-
-      .shell{
-        padding:
-          16px
-          12px
-          36px;
-      }
-
-      .topbar{
-        display:block;
-      }
-
-      .timestamp{
-        text-align:left;
-        margin-top:8px;
-      }
-
-      .stats{
-        grid-template-columns:
-          1fr 1fr;
-      }
-
-      .feed-grid{
-        grid-template-columns:1fr;
-      }
-
-      .score-layout,
-      .score-breakdown,
-      .detail-grid{
-        grid-template-columns:1fr;
-      }
-
-      .source-detail-grid{
-        grid-template-columns:1fr;
-      }
-
-      .search{
-        min-width:100%;
-        flex-basis:100%;
-      }
-
-      .tabs{
-        flex-basis:100%;
-      }
-
-      .controls{
-        align-items:stretch;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>OSINT IOC Collector – açıq təhdid indikatorları</title>
+
+<link
+  rel="icon"
+  href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>"
+>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap"
+  rel="stylesheet"
+>
+
+<style>
+
+:root{
+  --bg:#eef1f4;
+  --panel:#fff;
+  --ink:#101820;
+  --mute:#5b6773;
+  --line:#d5dce3;
+  --acc:#0b6e8a;
+  --hi:#b3261e;
+  --mid:#a15c00;
+  --lo:#4a5866;
+}
+
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f151b;
+    --panel:#18212a;
+    --ink:#e6ebf0;
+    --mute:#97a4b1;
+    --line:#2b3742;
+    --acc:#5cc3e0;
+    --hi:#ff8a80;
+    --mid:#f5b45a;
+    --lo:#9fb0c0;
+  }
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:
+    15px/1.5
+    "IBM Plex Sans",
+    system-ui,
+    sans-serif;
+}
+
+.wrap{
+  max-width:1100px;
+  margin:0 auto;
+  padding:28px 16px 48px;
+}
+
+h1{
+  font-size:28px;
+  margin:0 0 4px;
+  letter-spacing:-.01em;
+}
+
+.sub{
+  color:var(--mute);
+  margin:0 0 20px;
+  max-width:70ch;
+}
+
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.tab{
+  border:1px solid var(--line);
+  background:var(--panel);
+  color:var(--ink);
+  padding:8px 14px;
+  border-radius:6px;
+  cursor:pointer;
+  font:inherit;
+}
+
+.tab[aria-selected=true]{
+  border-color:var(--acc);
+  box-shadow:inset 0 -3px 0 var(--acc);
+}
+
+.tab b{
+  font-family:"IBM Plex Mono",monospace;
+  font-weight:500;
+  margin-left:6px;
+  color:var(--mute);
+}
+
+.bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.bar input[type=search]{
+  flex:1 1 260px;
+  padding:9px 12px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:var(--panel);
+  color:var(--ink);
+  font:inherit;
+}
+
+.bar label{
+  color:var(--mute);
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.download-group{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-left:auto;
+}
+
+.download-label{
+  color:var(--mute);
+  font-size:13px;
+}
+
+.download-select{
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:var(--panel);
+  color:var(--ink);
+  font:inherit;
+}
+
+a.dl{
+  color:var(--acc);
+  text-decoration:none;
+}
+
+a.dl:hover{
+  text-decoration:underline;
+}
+
+:focus-visible{
+  outline:2px solid var(--acc);
+  outline-offset:2px;
+}
+
+.tbl{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow-x:auto;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,
+td{
+  text-align:left;
+  padding:9px 12px;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+
+th{
+  font-weight:600;
+  color:var(--mute);
+  font-size:13px;
+}
+
+td.v{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:13px;
+  word-break:break-all;
+  min-width:260px;
+}
+
+td.v small{
+  display:block;
+  font-family:"IBM Plex Sans",sans-serif;
+  color:var(--mute);
+  font-size:12px;
+  margin-top:2px;
+}
+
+.s{
+  font-family:"IBM Plex Mono",monospace;
+  font-weight:500;
+}
+
+.s.hi{
+  color:var(--hi);
+}
+
+.s.mid{
+  color:var(--mid);
+}
+
+.s.lo{
+  color:var(--lo);
+}
+
+.pg{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:flex-end;
+  margin-top:12px;
+  color:var(--mute);
+}
+
+.pg button{
+  padding:6px 12px;
+  border:1px solid var(--line);
+  background:var(--panel);
+  color:var(--ink);
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.pg button:disabled{
+  opacity:.4;
+  cursor:default;
+}
+
+.note{
+  margin-top:28px;
+  color:var(--mute);
+  font-size:13px;
+  max-width:80ch;
+}
+
+#msg{
+  padding:24px;
+  color:var(--mute);
+}
+
+@media(max-width:760px){
+
+  .download-group{
+    margin-left:0;
+    width:100%;
+  }
+
+  .download-select{
+    flex:1;
+    min-width:180px;
+  }
+
+}
+
+</style>
 </head>
 
 <body>
 
-<main class="shell">
+<main class="wrap">
 
-  <header class="topbar">
+  <h1>
+    OSINT IOC Collector
+  </h1>
 
-    <div class="brand-row">
+  <p class="sub">
+    Açıq mənbələrdən
+    (Feodo Tracker, URLhaus, MalwareBazaar,
+    Spamhaus DROP) toplanan, təmizlənmiş və
+    risk skoru verilmiş təhdid indikatorları.
+    Axtarın və ya ayrıca IOC tipini, yaxud
+    bütün bazanı CSV/JSON formatında endirin.
+  </p>
 
-      <div class="mark">
-        IOC
-      </div>
+  <p
+    class="sub"
+    id="upd"
+  ></p>
 
-      <div>
 
-        <h1>
-          OSINT IOC Collector
-        </h1>
+  <div
+    class="tabs"
+    id="tabs"
+    role="tablist"
+  ></div>
 
-        <p class="subtitle">
-          Açıq threat-intelligence
-          feed-lərindən avtomatik toplanan,
-          normallaşdırılan, dublikatları
-          birləşdirilən və izah edilə bilən
-          risk skoru ilə təqdim olunan
-          indikatorlar.
-        </p>
 
-      </div>
+  <div class="bar">
 
-    </div>
+    <input
+      type="search"
+      id="q"
+      placeholder="Dəyər və ya təsvir üzrə axtar"
+      aria-label="Axtarış"
+    >
+
+
+    <label>
+
+      Minimum skor
+
+      <input
+        type="range"
+        id="min"
+        min="0"
+        max="100"
+        value="0"
+      >
+
+      <span
+        id="minv"
+        class="s"
+      >
+        0
+      </span>
+
+    </label>
+
 
     <div
-      class="timestamp"
-      id="generated"
+      class="download-group"
+      aria-label="Dataset endirmə seçimləri"
     >
-      Məlumat hazırlanır…
-    </div>
 
-  </header>
+      <span class="download-label">
+        Dataset:
+      </span>
 
 
-  <section
-    class="stats"
-    aria-label="Statistika"
-  >
-
-    <article class="stat">
-
-      <div class="stat-label">
-        Ümumi IOC
-      </div>
-
-      <div
-        class="stat-value"
-        id="statTotal"
+      <select
+        id="downloadSet"
+        class="download-select"
+        aria-label="Endiriləcək dataset"
       >
-        —
-      </div>
 
-      <div
-        class="stat-detail"
-        id="statTypes"
+        <option value="current">
+          Seçilmiş IOC tipi
+        </option>
+
+        <option value="all">
+          Bütün IOC-lər
+        </option>
+
+      </select>
+
+
+      <a
+        class="dl"
+        id="dlcsv"
+        href="#"
+        download
       >
-        —
-      </div>
-
-    </article>
+        CSV endir
+      </a>
 
 
-    <article class="stat">
-
-      <div class="stat-label">
-        High / Critical
-      </div>
-
-      <div
-        class="stat-value"
-        id="statHigh"
+      <a
+        class="dl"
+        id="dljson"
+        href="#"
+        download
       >
-        —
-      </div>
-
-      <div class="stat-detail">
-        Risk score ≥ 70
-      </div>
-
-    </article>
-
-
-    <article class="stat">
-
-      <div class="stat-label">
-        Multi-source
-      </div>
-
-      <div
-        class="stat-value"
-        id="statMulti"
-      >
-        —
-      </div>
-
-      <div class="stat-detail">
-        Ən azı 2 müstəqil feed
-      </div>
-
-    </article>
-
-
-    <article class="stat">
-
-      <div class="stat-label">
-        Feed
-      </div>
-
-      <div
-        class="stat-value"
-        id="statFeeds"
-      >
-        —
-      </div>
-
-      <div class="stat-detail">
-        Avtomatik collection statusu
-      </div>
-
-    </article>
-
-  </section>
-
-
-  <section
-    class="panel feed-panel"
-  >
-
-    <div class="section-head">
-
-      <div>
-
-        <div class="section-title">
-          Feed status
-        </div>
-
-        <div class="section-note">
-          Mənbə yenilənməsi ilə
-          collector-un son çəkiliş vaxtı
-          ayrıca göstərilir.
-        </div>
-
-      </div>
+        JSON endir
+      </a>
 
     </div>
 
-    <div
-      class="feed-grid"
-      id="feedGrid"
-    ></div>
-
-  </section>
+  </div>
 
 
-  <section class="panel">
+  <div class="tbl">
 
-    <div class="controls">
-
-      <div
-        class="tabs"
-        id="tabs"
-        role="tablist"
-        aria-label="IOC tipləri"
-      ></div>
-
-
-      <div class="control-item search">
-
-        <input
-          id="query"
-          type="search"
-          placeholder="IOC dəyəri və ya təsvir üzrə axtar…"
-          autocomplete="off"
-        >
-
-      </div>
-
-
-      <div class="control-item">
-
-        <label
-          for="sourceFilter"
-        >
-          Mənbə
-        </label>
-
-        <select
-          class="select"
-          id="sourceFilter"
-        >
-
-          <option value="">
-            Hamısı
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="control-item">
-
-        <label
-          for="riskFilter"
-        >
-          Risk
-        </label>
-
-        <select
-          class="select"
-          id="riskFilter"
-        >
-
-          <option value="">
-            Hamısı
-          </option>
-
-          <option value="critical">
-            Critical
-          </option>
-
-          <option value="high">
-            High
-          </option>
-
-          <option value="medium">
-            Medium
-          </option>
-
-          <option value="low">
-            Low
-          </option>
-
-          <option value="info">
-            Info
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="control-item">
-
-        <span>
-          Min score
-        </span>
-
-        <div class="range-wrap">
-
-          <input
-            id="minScore"
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value="0"
-          >
-
-          <span
-            class="score-number"
-            id="minScoreValue"
-          >
-            0
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="actions">
-
-        <a
-          class="btn"
-          id="csvDownload"
-          href="#"
-          download
-        >
-          CSV
-        </a>
-
-        <a
-          class="btn primary"
-          id="jsonDownload"
-          href="#"
-          download
-        >
-          JSON
-        </a>
-
-      </div>
-
+    <div id="msg">
+      Yüklənir…
     </div>
 
 
-    <div class="table-wrap">
-
-      <div
-        class="empty"
-        id="loading"
-      >
-        Data yüklənir…
-      </div>
-
-      <div
-        class="empty"
-        id="error"
-        hidden
-      ></div>
-
-
-      <table
-        id="iocTable"
-        hidden
-      >
-
-        <thead>
-
-          <tr>
-
-            <th>
-              IOC
-            </th>
-
-            <th>
-              Tip
-            </th>
-
-            <th>
-              Risk
-            </th>
-
-            <th>
-              Mənbə
-            </th>
-
-            <th>
-              Mənbə tarixi
-            </th>
-
-            <th>
-              Müşahidə
-            </th>
-
-            <th>
-              Son toplama
-            </th>
-
-          </tr>
-
-        </thead>
-
-        <tbody
-          id="iocBody"
-        ></tbody>
-
-      </table>
-
-    </div>
-
-
-    <div class="table-footer">
-
-      <div
-        class="result-count"
-        id="resultCount"
-      >
-        —
-      </div>
-
-      <div class="pager">
-
-        <button
-          class="page-btn"
-          id="prev"
-          disabled
-        >
-          ‹
-        </button>
-
-        <button
-          class="page-btn"
-          id="next"
-          disabled
-        >
-          ›
-        </button>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <section class="below">
-
-    <article
-      class="panel info-panel"
+    <table
+      id="t"
+      hidden
     >
 
-      <div class="section-head">
+      <thead>
 
-        <div>
+        <tr>
 
-          <div class="section-title">
-            Risk score modeli
-          </div>
+          <th>
+            Dəyər
+          </th>
 
-          <div class="section-note">
-            100 bal maksimumdur;
-            hər komponent ayrıca izah olunur.
-          </div>
+          <th>
+            Skor
+          </th>
 
-        </div>
+          <th>
+            Mənbə
+          </th>
 
-      </div>
+          <th>
+            Görünmə
+          </th>
 
+          <th>
+            Son görünmə
+          </th>
 
-      <div class="score-layout">
+        </tr>
 
-        <div class="score-item">
+      </thead>
 
-          <div class="score-item-top">
 
-            <span class="score-item-name">
-              Source confidence
-            </span>
+      <tbody></tbody>
 
-            <span class="score-item-max">
-              40
-            </span>
+    </table>
 
-          </div>
+  </div>
 
-          <p>
-            Feed üçün layihədə müəyyən
-            edilmiş mənbə çəkisi.
-          </p>
 
-        </div>
+  <div class="pg">
 
+    <span id="cnt"></span>
 
-        <div class="score-item">
+    <button id="prev">
+      Əvvəlki
+    </button>
 
-          <div class="score-item-top">
+    <button id="next">
+      Növbəti
+    </button>
 
-            <span class="score-item-name">
-              Freshness
-            </span>
+  </div>
 
-            <span class="score-item-max">
-              30
-            </span>
 
-          </div>
+  <p class="note">
 
-          <p>
-            Mənbədəki ən yeni aktivlik/timestamp
-            nə qədər təzədirsə, bal o qədər yüksəkdir.
-          </p>
+    Bu data məlumat məqsədlidir.
+    Skor avtomatik hesablanır,
+    false-positive ola bilər,
+    bloklamadan əvvəl yoxlayın.
+    Zərərli URL-lər kliklənəbilən
+    link kimi göstərilmir.
 
-        </div>
-
-
-        <div class="score-item">
-
-          <div class="score-item-top">
-
-            <span class="score-item-name">
-              Corroboration
-            </span>
-
-            <span class="score-item-max">
-              20
-            </span>
-
-          </div>
-
-          <p>
-            Eyni IOC-nin neçə fərqli feed
-            tərəfindən təsdiqləndiyini ölçür.
-          </p>
-
-        </div>
-
-
-        <div class="score-item">
-
-          <div class="score-item-top">
-
-            <span class="score-item-name">
-              Persistence
-            </span>
-
-            <span class="score-item-max">
-              10
-            </span>
-
-          </div>
-
-          <p>
-            IOC-nin ayrıca collection
-            run-larında təkrar müşahidə
-            edilməsini ölçür.
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <p class="footer-note">
-        Mənbə çəkiləri vendor tərəfindən
-        verilmiş risk reytinqi deyil;
-        bu layihənin explainable scoring
-        modelində istifadə olunan
-        project-defined çəkilərdir.
-      </p>
-
-    </article>
-
-
-    <article
-      class="panel info-panel"
-    >
-
-      <div class="section-head">
-
-        <div>
-
-          <div class="section-title">
-            Risk səviyyələri
-          </div>
-
-          <div class="section-note">
-            Score-un hansı aralığa düşdüyü
-            burada görünür.
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="band-row">
-
-        <div
-          class="band-name"
-          style="color:var(--critical)"
-        >
-          Critical
-        </div>
-
-        <div>
-          85–100
-        </div>
-
-      </div>
-
-
-      <div class="band-row">
-
-        <div
-          class="band-name"
-          style="color:var(--high)"
-        >
-          High
-        </div>
-
-        <div>
-          70–84
-        </div>
-
-      </div>
-
-
-      <div class="band-row">
-
-        <div
-          class="band-name"
-          style="color:var(--medium)"
-        >
-          Medium
-        </div>
-
-        <div>
-          50–69
-        </div>
-
-      </div>
-
-
-      <div class="band-row">
-
-        <div
-          class="band-name"
-          style="color:var(--low)"
-        >
-          Low
-        </div>
-
-        <div>
-          30–49
-        </div>
-
-      </div>
-
-
-      <div class="band-row">
-
-        <div
-          class="band-name"
-          style="color:var(--info)"
-        >
-          Info
-        </div>
-
-        <div>
-          0–29
-        </div>
-
-      </div>
-
-    </article>
-
-  </section>
-
-
-  <p class="footer-note">
-
-    Data mənbələri:
-
-    <a
-      href="https://feodotracker.abuse.ch/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      Feodo Tracker
-    </a>
-
-    ·
-
-    <a
-      href="https://urlhaus.abuse.ch/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      URLhaus
-    </a>
-
-    ·
-
-    <a
-      href="https://bazaar.abuse.ch/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      MalwareBazaar
-    </a>
-
-    ·
-
-    <a
-      href="https://www.spamhaus.org/drop/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      Spamhaus DROP
-    </a>.
-
-    Zərərli URL-lər birbaşa
-    kliklənən link kimi göstərilmir.
-
-    Spamhaus məlumatı source attribution
-    və feed timestamp ilə təqdim olunur;
-    cari istifadə/redistribution şərtləri
-    mənbədə yoxlanmalıdır.
+    Mənbələr:
+    abuse.ch və Spamhaus.
 
   </p>
 
 </main>
 
 
-<div
-  class="modal"
-  id="modal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="modalTitle"
->
-
-  <div class="modal-card">
-
-    <div class="modal-head">
-
-      <div>
-
-        <div
-          class="modal-title"
-          id="modalTitle"
-        >
-          IOC detail
-        </div>
-
-        <div
-          class="modal-value"
-          id="modalValue"
-        ></div>
-
-      </div>
-
-      <button
-        class="close"
-        id="modalClose"
-        aria-label="Bağla"
-      >
-        ×
-      </button>
-
-    </div>
-
-    <div
-      class="modal-body"
-      id="modalBody"
-    ></div>
-
-  </div>
-
-</div>
-
-
 <script>
-(() => {
 
-  const PAGE_SIZE = 60;
+const $ = s =>
+  document.querySelector(s);
 
-  const TYPE_ORDER = [
-    "ip",
-    "url",
-    "domain",
-    "sha256",
-    "cidr",
-  ];
 
-  const state = {
-    stats: null,
-    type: null,
-    rows: [],
-    filtered: [],
-    page: 1,
-  };
+const PS = 100;
 
-  const $ = (selector) =>
-    document.querySelector(selector);
 
-  const fmtNumber = (number) =>
-    Number(number || 0)
-      .toLocaleString("az-AZ");
+let stats;
+let rows = [];
+let type;
+let page = 0;
+let view = [];
 
-  const dateFmt =
-    new Intl.DateTimeFormat(
-      "az-AZ",
-      {
-        dateStyle: "medium",
-        timeStyle: "short",
-        timeZone: "Asia/Baku",
-      }
+
+const j = async u => {
+
+  const r =
+    await fetch(u);
+
+  if (!r.ok) {
+
+    throw new Error(
+      u + " → " + r.status
     );
 
-  function formatDate(value) {
-
-    if (!value) {
-      return "—";
-    }
-
-    const date =
-      new Date(
-        String(value)
-          .replace(
-            " UTC",
-            "Z"
-          )
-      );
-
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-      return String(value);
-    }
-
-    return dateFmt.format(
-      date
-    );
   }
 
+  return r.json();
 
-  function sourceDisplay(row) {
-
-    if (
-      Array.isArray(
-        row.source_details
-      )
-      &&
-      row.source_details.length
-    ) {
-
-      return row.source_details;
-    }
-
-    return (
-      row.sources || []
-    ).map(
-      source => ({
-        source,
-        source_activity_at:
-          null,
-        source_first_seen:
-          null,
-        source_last_seen:
-          null,
-        source_status:
-          null,
-        feed_updated_at:
-          null,
-      })
-    );
-  }
+};
 
 
-  function sourceReferenceDate(row) {
-
-    const details =
-      sourceDisplay(row);
-
-    const dates =
-      details
-        .map(
-          item =>
-            item.source_activity_at
-            ||
-            item.source_last_seen
-            ||
-            item.source_first_seen
-            ||
-            item.feed_updated_at
-        )
-        .filter(Boolean);
-
-    if (!dates.length) {
-
-      return (
-        row.source_first_seen
-        ||
-        row.feed_updated_at
-        ||
-        null
-      );
-    }
-
-    return dates.sort(
-      (a, b) => {
-
-        const da =
-          new Date(
-            String(a)
-              .replace(
-                " UTC",
-                "Z"
-              )
-          ).getTime();
-
-        const db =
-          new Date(
-            String(b)
-              .replace(
-                " UTC",
-                "Z"
-              )
-          ).getTime();
-
-        return db - da;
-      }
-    )[0];
-  }
+const cls = n =>
+  n >= 70
+    ? "hi"
+    : n >= 50
+      ? "mid"
+      : "lo";
 
 
-  function riskClass(score) {
+/*
+ * Download link-lərinin hansı datasetə
+ * getdiyini müəyyən edir.
+ *
+ * current:
+ *   data/ip.csv
+ *   data/ip.json
+ *
+ * all:
+ *   data/all.csv
+ *   data/all.json
+ */
+function updateDownloadLinks(){
 
-    if (score >= 85) {
-      return "critical";
-    }
-
-    if (score >= 70) {
-      return "high";
-    }
-
-    if (score >= 50) {
-      return "medium";
-    }
-
-    if (score >= 30) {
-      return "low";
-    }
-
-    return "info";
-  }
+  const mode =
+    $("#downloadSet").value;
 
 
-  function riskLabel(level) {
-
-    return String(
-      level || "info"
-    ).replace(
-      /^\w/,
-      character =>
-        character.toUpperCase()
-    );
-  }
+  const base =
+    mode === "all"
+      ? "data/all"
+      : "data/" + type;
 
 
-  function riskChip(row) {
+  const suffix =
+    mode === "all"
+      ? "all"
+      : type;
 
-    const span =
-      document.createElement(
-        "span"
+
+  $("#dlcsv").href =
+    base + ".csv";
+
+
+  $("#dlcsv").download =
+    "osint-ioc-" +
+    suffix +
+    ".csv";
+
+
+  $("#dljson").href =
+    base + ".json";
+
+
+  $("#dljson").download =
+    "osint-ioc-" +
+    suffix +
+    ".json";
+
+}
+
+
+async function init(){
+
+  try{
+
+    stats =
+      await j(
+        "data/stats.json"
       );
 
-    span.className =
-      `risk ${
-        riskClass(
-          Number(
-            row.risk_score || 0
-          )
-        )
-      }`;
 
-    const label =
-      document.createElement(
-        "span"
-      );
-
-    label.textContent =
-      riskLabel(
-        row.risk_level
-      );
-
-    const score =
-      document.createElement(
-        "strong"
-      );
-
-    score.textContent =
-      String(
-        row.risk_score ?? 0
-      );
-
-    span.append(
-      label,
-      score
-    );
-
-    return span;
-  }
+    $("#upd").textContent =
+      "Son yenilənmə: " +
+      stats.generated_at +
+      " · cəmi " +
+      stats.total.toLocaleString() +
+      " indikator";
 
 
-  function sourcePills(
-    sources
-  ) {
-
-    const wrapper =
-      document.createElement(
-        "div"
-      );
-
-    wrapper.className =
-      "source-list";
-
-    (sources || [])
-      .forEach(
-        name => {
-
-          const pill =
-            document.createElement(
-              "span"
-            );
-
-          pill.className =
-            "source-pill";
-
-          pill.textContent =
-            name;
-
-          wrapper.appendChild(
-            pill
-          );
-        }
-      );
-
-    return wrapper;
-  }
-
-
-  async function loadJson(
-    url
-  ) {
-
-    const response =
-      await fetch(
-        url,
-        {
-          cache: "no-store",
-        }
-      );
-
-    if (!response.ok) {
-
-      throw new Error(
-        `${url} → ${response.status}`
-      );
-    }
-
-    return response.json();
-  }
-
-
-  function buildTabs() {
-
-    const container =
+    const tabs =
       $("#tabs");
 
-    container.innerHTML =
-      "";
 
-    const entries =
-      Object.entries(
-        state.stats.by_type || {}
-      );
+    Object.entries(
+      stats.by_type
+    ).forEach(
+      ([t,n]) => {
 
-    entries.sort(
-      (a, b) => {
-
-        const ai =
-          TYPE_ORDER.indexOf(
-            a[0]
-          );
-
-        const bi =
-          TYPE_ORDER.indexOf(
-            b[0]
-          );
-
-        return (
-          (
-            ai < 0
-              ? 99
-              : ai
-          )
-          -
-          (
-            bi < 0
-              ? 99
-              : bi
-          )
-        );
-      }
-    );
-
-    entries.forEach(
-      ([type, count]) => {
-
-        const button =
+        const b =
           document.createElement(
             "button"
           );
 
-        button.className =
-          "tab"
-          +
-          (
-            state.type === type
-              ? " active"
-              : ""
-          );
 
-        button.setAttribute(
+        b.className =
+          "tab";
+
+
+        b.setAttribute(
           "role",
           "tab"
         );
 
-        button.setAttribute(
+
+        b.setAttribute(
           "aria-selected",
-          String(
-            state.type === type
-          )
+          "false"
         );
 
-        button.dataset.type =
-          type;
 
-        button.textContent =
-          `${(
-            type || ""
-          ).toUpperCase()} `;
+        b.innerHTML =
+          t +
+          "<b>" +
+          n.toLocaleString() +
+          "</b>";
 
-        const badge =
-          document.createElement(
-            "span"
-          );
 
-        badge.className =
-          "tab-count";
+        b.onclick = () =>
+          load(t);
 
-        badge.textContent =
-          fmtNumber(
-            count
-          );
 
-        button.appendChild(
-          badge
-        );
+        b.dataset.t =
+          t;
 
-        button.addEventListener(
-          "click",
-          () =>
-            selectType(type)
-        );
 
-        container.appendChild(
-          button
-        );
+        tabs.append(b);
+
       }
     );
+
+
+    const firstType =
+      Object.keys(
+        stats.by_type
+      )[0];
+
+
+    if(firstType){
+
+      await load(
+        firstType
+      );
+
+    }
+
+  }
+
+  catch(e){
+
+    $("#msg").textContent =
+      "Data yüklənmədi: " +
+      e.message +
+      ". Səhifəni yeniləyin və ya " +
+      "bir az sonra yenidən cəhd edin.";
+
+  }
+
+}
+
+
+async function load(t){
+
+  type = t;
+
+  page = 0;
+
+
+  $("#msg").hidden =
+    false;
+
+
+  $("#msg").textContent =
+    "Yüklənir…";
+
+
+  $("#t").hidden =
+    true;
+
+
+  document
+    .querySelectorAll(".tab")
+    .forEach(
+      b => {
+
+        b.setAttribute(
+          "aria-selected",
+          b.dataset.t === t
+        );
+
+      }
+    );
+
+
+  /*
+   * Cari IOC tipi seçildikdə
+   * download linkləri həmin tipə gedir.
+   */
+  if(
+    $("#downloadSet").value !== "all"
+  ){
+
+    updateDownloadLinks();
+
   }
 
 
-  function buildSourceFilter() {
+  try{
 
-    const select =
-      $("#sourceFilter");
+    rows =
+      await j(
+        "data/" +
+        t +
+        ".json"
+      );
 
-    const current =
-      select.value;
+  }
 
-    const sources =
-      new Set();
+  catch(e){
 
-    (
-      state.rows || []
-    ).forEach(
-      row => {
+    $("#msg").textContent =
+      "Bu tip yüklənmədi: " +
+      e.message;
 
+    return;
+
+  }
+
+
+  render();
+
+}
+
+
+function render(){
+
+  const q =
+    $("#q")
+      .value
+      .trim()
+      .toLowerCase();
+
+
+  const m =
+    +$("#min")
+      .value;
+
+
+  view =
+    rows.filter(
+      r =>
+        r[1] >= m
+        &&
         (
-          row.sources || []
-        ).forEach(
-          source =>
-            sources.add(
-              source
-            )
-        );
-      }
-    );
-
-    select.innerHTML =
-      '<option value="">Hamısı</option>';
-
-    [...sources]
-      .sort()
-      .forEach(
-        source => {
-
-          const option =
-            document.createElement(
-              "option"
-            );
-
-          option.value =
-            source;
-
-          option.textContent =
-            source;
-
-          select.appendChild(
-            option
-          );
-        }
-      );
-
-    if (
-      [
-        ...sources
-      ].includes(
-        current
-      )
-    ) {
-
-      select.value =
-        current;
-    }
-  }
-
-
-  function applyFilters() {
-
-    const query =
-      $("#query")
-        .value
-        .trim()
-        .toLowerCase();
-
-    const source =
-      $("#sourceFilter")
-        .value;
-
-    const risk =
-      $("#riskFilter")
-        .value;
-
-    const minScore =
-      Number(
-        $("#minScore")
-          .value
-      );
-
-    state.filtered =
-      (
-        state.rows || []
-      ).filter(
-        row => {
-
-          const score =
-            Number(
-              row.risk_score
-              || 0
-            );
-
-          if (
-            score < minScore
-          ) {
-            return false;
-          }
-
-          if (
-            source
-            &&
-            !(
-              row.sources || []
-            ).includes(
-              source
-            )
-          ) {
-            return false;
-          }
-
-          if (
-            risk
-            &&
-            String(
-              row.risk_level
-              || "info"
-            ) !== risk
-          ) {
-            return false;
-          }
-
-          if (query) {
-
-            const value =
-              String(
-                row.value || ""
-              ).toLowerCase();
-
-            const description =
-              String(
-                row.description
-                || ""
-              ).toLowerCase();
-
-            if (
-              !value.includes(
-                query
-              )
-              &&
-              !description.includes(
-                query
-              )
-            ) {
-              return false;
-            }
-          }
-
-          return true;
-        }
-      );
-
-    state.page = 1;
-
-    renderTable();
-  }
-
-
-  function renderTable() {
-
-    const tbody =
-      $("#iocBody");
-
-    tbody.innerHTML =
-      "";
-
-    const total =
-      state.filtered.length;
-
-    const pages =
-      Math.max(
-        1,
-        Math.ceil(
-          total /
-          PAGE_SIZE
-        )
-      );
-
-    if (
-      state.page > pages
-    ) {
-      state.page = pages;
-    }
-
-    const start =
-      (
-        state.page - 1
-      ) * PAGE_SIZE;
-
-    const visible =
-      state.filtered.slice(
-        start,
-        start + PAGE_SIZE
-      );
-
-    if (
-      !visible.length
-    ) {
-
-      $("#iocTable").hidden =
-        true;
-
-      $("#loading").hidden =
-        false;
-
-      $("#loading").textContent =
-        "Bu filter ilə uyğun IOC tapılmadı.";
-
-    } else {
-
-      $("#loading").hidden =
-        true;
-
-      $("#iocTable").hidden =
-        false;
-
-      visible.forEach(
-        row => {
-
-          const tr =
-            document.createElement(
-              "tr"
-            );
-
-          const tdValue =
-            document.createElement(
-              "td"
-            );
-
-          tdValue.className =
-            "value-cell";
-
-          const button =
-            document.createElement(
-              "button"
-            );
-
-          button.className =
-            "value-btn";
-
-          button.textContent =
-            String(
-              row.value
-              || ""
-            );
-
-          button.addEventListener(
-            "click",
-            () =>
-              openDetails(row)
-          );
-
-          tdValue.appendChild(
-            button
-          );
-
-
-          const tdType =
-            document.createElement(
-              "td"
-            );
-
-          const typeBadge =
-            document.createElement(
-              "span"
-            );
-
-          typeBadge.className =
-            "type-badge";
-
-          typeBadge.textContent =
-            row.ioc_type_label
-            ||
-            row.ioc_type
-            ||
-            "—";
-
-          tdType.appendChild(
-            typeBadge
-          );
-
-
-          const tdRisk =
-            document.createElement(
-              "td"
-            );
-
-          tdRisk.appendChild(
-            riskChip(row)
-          );
-
-
-          const tdSource =
-            document.createElement(
-              "td"
-            );
-
-          tdSource.appendChild(
-            sourcePills(
-              row.sources
-            )
-          );
-
-
-          const tdSourceDate =
-            document.createElement(
-              "td"
-            );
-
-          tdSourceDate.className =
-            "mono";
-
-          tdSourceDate.textContent =
-            formatDate(
-              sourceReferenceDate(
-                row
-              )
-            );
-
-
-          const tdSeen =
-            document.createElement(
-              "td"
-            );
-
-          tdSeen.textContent =
-            fmtNumber(
-              row.seen_count
-            );
-
-
-          const tdCollected =
-            document.createElement(
-              "td"
-            );
-
-          tdCollected.className =
-            "mono";
-
-          tdCollected.textContent =
-            formatDate(
-              row.collector_last_seen
-            );
-
-
-          tr.append(
-            tdValue,
-            tdType,
-            tdRisk,
-            tdSource,
-            tdSourceDate,
-            tdSeen,
-            tdCollected
-          );
-
-          tbody.appendChild(
-            tr
-          );
-        }
-      );
-    }
-
-    const from =
-      total
-        ? start + 1
-        : 0;
-
-    const to =
-      Math.min(
-        start + PAGE_SIZE,
-        total
-      );
-
-    $("#resultCount")
-      .textContent =
-      `${fmtNumber(from)}–${fmtNumber(to)} / ${fmtNumber(total)} IOC`;
-
-    $("#prev").disabled =
-      state.page <= 1;
-
-    $("#next").disabled =
-      state.page >= pages;
-  }
-
-
-  async function selectType(
-    type
-  ) {
-
-    state.type =
-      type;
-
-    buildTabs();
-
-    $("#loading").hidden =
-      false;
-
-    $("#loading").textContent =
-      "Data yüklənir…";
-
-    $("#iocTable").hidden =
-      true;
-
-    const base =
-      `data/${encodeURIComponent(
-        type
-      )}`;
-
-    $("#csvDownload").href =
-      `${base}.csv`;
-
-    $("#csvDownload").download =
-      `osint-ioc-${type}.csv`;
-
-    $("#jsonDownload").href =
-      `${base}.json`;
-
-    $("#jsonDownload").download =
-      `osint-ioc-${type}.json`;
-
-    try {
-
-      state.rows =
-        await loadJson(
-          `${base}.json`
-        );
-
-      buildSourceFilter();
-
-      applyFilters();
-
-    } catch (error) {
-
-      $("#loading").hidden =
-        true;
-
-      $("#error").hidden =
-        false;
-
-      $("#error").textContent =
-        `Data yüklənmədi: ${error.message}`;
-    }
-  }
-
-
-  function renderStats() {
-
-    const stats =
-      state.stats;
-
-    $("#statTotal")
-      .textContent =
-      fmtNumber(
-        stats.total
-      );
-
-    const high =
-      Number(
-        stats.by_risk_level?.high
-        || 0
-      )
-      +
-      Number(
-        stats.by_risk_level?.critical
-        || 0
-      );
-
-    $("#statHigh")
-      .textContent =
-      fmtNumber(
-        high
-      );
-
-    $("#statMulti")
-      .textContent =
-      fmtNumber(
-        stats.multi_source
-        || 0
-      );
-
-    $("#statFeeds")
-      .textContent =
-      `0 / ${fmtNumber(
-        stats.feed_count
-      )}`;
-
-    $("#statTypes")
-      .textContent =
-      Object.entries(
-        stats.by_type || {}
-      )
-        .map(
-          ([type, count]) =>
-            `${type.toUpperCase()}: ${fmtNumber(count)}`
-        )
-        .join(" · ");
-
-    $("#generated")
-      .textContent =
-      `Dataset son hazırlanıb: ${formatDate(
-        stats.generated_at
-      )}`;
-
-    const feeds =
-      stats.feeds || [];
-
-    const successful =
-      feeds.filter(
-        feed =>
-          feed.status === "success"
-      ).length;
-
-    $("#statFeeds")
-      .textContent =
-      `${successful} / ${feeds.length}`;
-  }
-
-
-  function renderFeeds() {
-
-    const grid =
-      $("#feedGrid");
-
-    grid.innerHTML =
-      "";
-
-    (
-      state.stats.feeds
-      || []
-    ).forEach(
-      feed => {
-
-        const card =
-          document.createElement(
-            "article"
-          );
-
-        card.className =
-          "feed";
-
-
-        const top =
-          document.createElement(
-            "div"
-          );
-
-        top.className =
-          "feed-top";
-
-
-        const dot =
-          document.createElement(
-            "span"
-          );
-
-        dot.className =
-          "dot "
-          +
-          (
-            feed.status === "success"
-              ? "ok"
-              : feed.status === "error"
-                ? "bad"
-                : "wait"
-          );
-
-
-        const name =
-          document.createElement(
-            "span"
-          );
-
-        name.className =
-          "feed-name";
-
-        name.textContent =
-          feed.source;
-
-
-        const stateText =
-          document.createElement(
-            "span"
-          );
-
-        stateText.className =
-          "feed-state";
-
-        stateText.textContent =
-          feed.status === "success"
-            ? "Healthy"
-            : feed.status === "error"
-              ? "Error"
-              : "Waiting";
-
-
-        top.append(
-          dot,
-          name,
-          stateText
-        );
-
-
-        const description =
-          document.createElement(
-            "div"
-          );
-
-        description.className =
-          "feed-desc";
-
-        description.textContent =
-          feed.description
+          !q
           ||
-          "IOC feed";
-
-
-        const meta =
-          document.createElement(
-            "div"
-          );
-
-        meta.className =
-          "feed-meta";
-
-
-        const count =
-          document.createElement(
-            "div"
-          );
-
-        count.textContent =
-          `Çəkilən qeyd: ${fmtNumber(
-            feed.row_count
-          )}`;
-
-
-        const sourceTime =
-          document.createElement(
-            "div"
-          );
-
-        sourceTime.textContent =
-          `Mənbə vaxtı: ${formatDate(
-            feed.feed_updated_at
-          )}`;
-
-
-        const collectorTime =
-          document.createElement(
-            "div"
-          );
-
-        collectorTime.textContent =
-          `Son çəkiliş: ${formatDate(
-            feed.fetched_at
-          )}`;
-
-
-        meta.append(
-          count,
-          sourceTime,
-          collectorTime
-        );
-
-
-        card.append(
-          top,
-          description,
-          meta
-        );
-
-
-        if (
-          feed.source_url
-        ) {
-
-          const link =
-            document.createElement(
-              "a"
-            );
-
-          link.href =
-            feed.source_url;
-
-          link.target =
-            "_blank";
-
-          link.rel =
-            "noreferrer";
-
-          link.textContent =
-            "Mənbəyə keç";
-
-          link.style.cssText =
-            "display:inline-block;" +
-            "margin-top:8px;" +
-            "font-size:11px;" +
-            "color:var(--accent-dark);" +
-            "text-decoration:none";
-
-          card.appendChild(
-            link
-          );
-        }
-
-
-        if (feed.error) {
-
-          const error =
-            document.createElement(
-              "div"
-            );
-
-          error.style.cssText =
-            "margin-top:7px;" +
-            "color:var(--critical);" +
-            "font-size:11px";
-
-          error.textContent =
-            feed.error;
-
-          card.appendChild(
-            error
-          );
-        }
-
-
-        grid.appendChild(
-          card
-        );
-      }
-    );
-  }
-
-
-  function detailBox(
-    label,
-    value
-  ) {
-
-    const div =
-      document.createElement(
-        "div"
-      );
-
-    div.className =
-      "detail";
-
-
-    const labelNode =
-      document.createElement(
-        "div"
-      );
-
-    labelNode.className =
-      "detail-label";
-
-    labelNode.textContent =
-      label;
-
-
-    const valueNode =
-      document.createElement(
-        "div"
-      );
-
-    valueNode.className =
-      "detail-value";
-
-    valueNode.textContent =
-      value || "—";
-
-
-    div.append(
-      labelNode,
-      valueNode
+          r[0]
+            .toLowerCase()
+            .includes(q)
+          ||
+          (
+            r[6] || ""
+          )
+            .toLowerCase()
+            .includes(q)
+        )
     );
 
-    return div;
-  }
 
-
-  function miniDetail(
-    label,
-    value
-  ) {
-
-    const div =
-      document.createElement(
-        "div"
-      );
-
-
-    const labelNode =
-      document.createElement(
-        "div"
-      );
-
-    labelNode.className =
-      "mini-label";
-
-    labelNode.textContent =
-      label;
-
-
-    const valueNode =
-      document.createElement(
-        "div"
-      );
-
-    valueNode.className =
-      "mini-value";
-
-    if (
-      label ===
-      "Source URL"
-    ) {
-
-      valueNode.textContent =
-        value || "—";
-
-    } else {
-
-      valueNode.textContent =
-        formatDate(value);
-    }
-
-
-    div.append(
-      labelNode,
-      valueNode
-    );
-
-    return div;
-  }
-
-
-  function openDetails(
-    row
-  ) {
-
-    $("#modalTitle")
-      .textContent =
-      `${
-        row.ioc_type_label
-        || row.ioc_type
-      } · ${
-        riskLabel(
-          row.risk_level
-        )
-      }`;
-
-
-    $("#modalValue")
-      .textContent =
-      row.value;
-
-
-    const body =
-      $("#modalBody");
-
-    body.innerHTML =
-      "";
-
-
-    const grid =
-      document.createElement(
-        "div"
-      );
-
-    grid.className =
-      "detail-grid";
-
-
-    grid.append(
-      detailBox(
-        "Risk score",
-        `${row.risk_score} / 100`
-      ),
-
-      detailBox(
-        "Müşahidə sayı",
-        fmtNumber(
-          row.seen_count
-        )
-      ),
-
-      detailBox(
-        "Mənbə sayı",
-        fmtNumber(
-          row.source_count
-        )
-      ),
-
-      detailBox(
-        "Collector ilk toplama",
-        formatDate(
-          row.collector_first_seen
-        )
-      ),
-
-      detailBox(
-        "Collector son toplama",
-        formatDate(
-          row.collector_last_seen
-        )
-      ),
-
-      detailBox(
-        "Mənbədə ilk tarix",
-        formatDate(
-          row.source_first_seen
-        )
-      ),
-
-      detailBox(
-        "Mənbədə son tarix",
-        formatDate(
-          row.source_last_seen
-        )
-      ),
-
-      detailBox(
-        "Feed yenilənməsi",
-        formatDate(
-          row.feed_updated_at
-        )
-      ),
-
-      detailBox(
-        "Status",
-        row.source_status
+  const pages =
+    Math.max(
+      1,
+      Math.ceil(
+        view.length /
+        PS
       )
     );
 
 
-    body.appendChild(
-      grid
+  page =
+    Math.min(
+      page,
+      pages - 1
     );
 
 
-    const breakdownTitle =
-      document.createElement(
-        "div"
-      );
-
-    breakdownTitle.className =
-      "detail-section";
-
-    breakdownTitle.innerHTML =
-      "<h3>Risk score breakdown</h3>";
+  const tb =
+    $("#t tbody");
 
 
-    const breakdown =
-      document.createElement(
-        "div"
-      );
-
-    breakdown.className =
-      "score-breakdown";
+  tb.innerHTML =
+    "";
 
 
-    const labels = [
-      [
-        "Source confidence",
-        row.score_breakdown?.source_confidence,
-        40,
-      ],
+  view
+    .slice(
+      page * PS,
+      page * PS + PS
+    )
+    .forEach(
+      r => {
 
-      [
-        "Freshness",
-        row.score_breakdown?.freshness,
-        30,
-      ],
-
-      [
-        "Corroboration",
-        row.score_breakdown?.corroboration,
-        20,
-      ],
-
-      [
-        "Persistence",
-        row.score_breakdown?.persistence,
-        10,
-      ],
-    ];
-
-
-    labels.forEach(
-      ([label, value, max]) => {
-
-        const box =
+        const tr =
           document.createElement(
-            "div"
+            "tr"
           );
 
-        box.className =
-          "score-box";
 
-
-        const number =
+        const v =
           document.createElement(
-            "div"
+            "td"
           );
 
-        number.className =
-          "n";
 
-        number.textContent =
-          `${value ?? 0}/${max}`;
+        v.className =
+          "v";
 
 
-        const labelNode =
-          document.createElement(
-            "div"
-          );
-
-        labelNode.className =
-          "l";
-
-        labelNode.textContent =
-          label;
+        v.textContent =
+          r[0];
 
 
-        box.append(
-          number,
-          labelNode
-        );
+        if(r[6]){
 
-        breakdown.appendChild(
-          box
-        );
-      }
-    );
-
-
-    breakdownTitle.appendChild(
-      breakdown
-    );
-
-    body.appendChild(
-      breakdownTitle
-    );
-
-
-    const sourceTitle =
-      document.createElement(
-        "div"
-      );
-
-    sourceTitle.className =
-      "detail-section";
-
-    sourceTitle.innerHTML =
-      "<h3>Source evidence</h3>";
-
-    body.appendChild(
-      sourceTitle
-    );
-
-
-    sourceDisplay(row)
-      .forEach(
-        item => {
-
-          const block =
+          const s =
             document.createElement(
-              "div"
+              "small"
             );
 
-          block.className =
-            "source-detail";
+
+          s.textContent =
+            r[6];
 
 
-          const head =
-            document.createElement(
-              "div"
-            );
+          v.append(s);
 
-          head.className =
-            "source-detail-head";
-
-
-          const name =
-            document.createElement(
-              "div"
-            );
-
-          name.className =
-            "source-detail-name";
-
-          name.textContent =
-            item.source
-            ||
-            "Unknown source";
-
-
-          const reference =
-            document.createElement(
-              "div"
-            );
-
-          reference.className =
-            "source-detail-ref";
-
-          reference.textContent =
-            item.reference
-            ||
-            "";
-
-
-          head.append(
-            name,
-            reference
-          );
-
-
-          const details =
-            document.createElement(
-              "div"
-            );
-
-          details.className =
-            "source-detail-grid";
-
-
-          details.append(
-
-            miniDetail(
-              "Mənbədə ilk görülmə",
-              item.source_first_seen
-            ),
-
-            miniDetail(
-              "Mənbədə son görülmə",
-              item.source_last_seen
-            ),
-
-            miniDetail(
-              "Aktivlik vaxtı",
-              item.source_activity_at
-            ),
-
-            miniDetail(
-              "Feed yenilənməsi",
-              item.feed_updated_at
-            ),
-
-            miniDetail(
-              "Status",
-              item.source_status
-            ),
-
-            miniDetail(
-              "Source URL",
-              item.source_url
-            )
-
-          );
-
-
-          block.append(
-            head,
-            details
-          );
-
-
-          if (
-            item.source_copyright
-          ) {
-
-            const copyright =
-              document.createElement(
-                "div"
-              );
-
-            copyright.className =
-              "mini-value muted";
-
-            copyright.style.marginTop =
-              "9px";
-
-            copyright.textContent =
-              item.source_copyright;
-
-            block.appendChild(
-              copyright
-            );
-          }
-
-
-          body.appendChild(
-            block
-          );
         }
-      );
 
 
-    const descTitle =
-      document.createElement(
-        "div"
-      );
-
-    descTitle.className =
-      "detail-section";
-
-    descTitle.innerHTML =
-      "<h3>Analitik təsvir</h3>";
-
-
-    const desc =
-      document.createElement(
-        "div"
-      );
-
-    desc.className =
-      "detail";
-
-    desc.textContent =
-      row.description
-      ||
-      "Mənbə əlavə təsvir təqdim etməyib.";
-
-
-    descTitle.appendChild(
-      desc
-    );
-
-    body.appendChild(
-      descTitle
-    );
-
-
-    const actions =
-      document.createElement(
-        "div"
-      );
-
-    actions.className =
-      "modal-actions";
-
-
-    const copy =
-      document.createElement(
-        "button"
-      );
-
-    copy.className =
-      "btn primary";
-
-    copy.textContent =
-      "IOC-ni kopyala";
-
-
-    copy.addEventListener(
-      "click",
-      async () => {
-
-        try {
-
-          await navigator.clipboard.writeText(
-            row.value
+        const sc =
+          document.createElement(
+            "td"
           );
 
-          copy.textContent =
-            "Kopyalandı";
 
-          setTimeout(
-            () => {
-              copy.textContent =
-                "IOC-ni kopyala";
-            },
-            1300
-          );
-
-        } catch {
-
-          copy.textContent =
-            "Kopyalama mümkün olmadı";
-        }
-      }
-    );
+        sc.innerHTML =
+          '<span class="s ' +
+          cls(r[1]) +
+          '">' +
+          r[1] +
+          "</span>";
 
 
-    actions.appendChild(
-      copy
-    );
+        [
+          v,
+          sc,
+          r[2],
+          r[3],
+          (
+            r[5] || ""
+          ).slice(0,10)
+        ]
+        .forEach(
+          c => {
 
-    body.appendChild(
-      actions
-    );
+            if(
+              c instanceof Node
+            ){
 
+              tr.append(c);
 
-    $("#modal")
-      .classList.add(
-        "show"
-      );
-  }
-
-
-  function closeModal() {
-
-    $("#modal")
-      .classList.remove(
-        "show"
-      );
-  }
-
-
-  async function init() {
-
-    try {
-
-      state.stats =
-        await loadJson(
-          "data/stats.json"
-        );
-
-      renderStats();
-
-      renderFeeds();
-
-      buildTabs();
-
-
-      const preferred =
-        TYPE_ORDER.find(
-          type =>
-            state.stats
-              .by_type?.[type]
-            != null
-        );
-
-
-      state.type =
-        preferred
-        ||
-        Object.keys(
-          state.stats.by_type
-          || {}
-        )[0];
-
-
-      buildTabs();
-
-      await selectType(
-        state.type
-      );
-
-
-      $("#query")
-        .addEventListener(
-          "input",
-          applyFilters
-        );
-
-
-      $("#sourceFilter")
-        .addEventListener(
-          "change",
-          applyFilters
-        );
-
-
-      $("#riskFilter")
-        .addEventListener(
-          "change",
-          applyFilters
-        );
-
-
-      $("#minScore")
-        .addEventListener(
-          "input",
-          () => {
-
-            $("#minScoreValue")
-              .textContent =
-              $("#minScore")
-                .value;
-
-            applyFilters();
-          }
-        );
-
-
-      $("#prev")
-        .addEventListener(
-          "click",
-          () => {
-
-            if (
-              state.page > 1
-            ) {
-
-              state.page--;
-
-              renderTable();
             }
-          }
-        );
+
+            else{
+
+              const d =
+                document.createElement(
+                  "td"
+                );
 
 
-      $("#next")
-        .addEventListener(
-          "click",
-          () => {
+              d.textContent =
+                c;
 
-            const pages =
-              Math.max(
-                1,
-                Math.ceil(
-                  state.filtered.length /
-                  PAGE_SIZE
-                )
-              );
 
-            if (
-              state.page < pages
-            ) {
+              tr.append(d);
 
-              state.page++;
-
-              renderTable();
             }
+
           }
         );
 
-    } catch (error) {
 
-      $("#loading").hidden =
-        true;
+        tb.append(tr);
 
-      $("#error").hidden =
-        false;
-
-      $("#error").textContent =
-        `Dataset yüklənmədi: ${error.message}`;
-    }
-  }
-
-
-  $("#modalClose")
-    .addEventListener(
-      "click",
-      closeModal
-    );
-
-
-  $("#modal")
-    .addEventListener(
-      "click",
-      event => {
-
-        if (
-          event.target ===
-          $("#modal")
-        ) {
-          closeModal();
-        }
       }
     );
 
 
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      if (
-        event.key === "Escape"
-      ) {
-        closeModal();
-      }
-    }
-  );
+  $("#msg").hidden =
+    view.length > 0;
 
 
-  init();
+  $("#msg").textContent =
+    "Filtrə uyğun nəticə yoxdur. " +
+    "Axtarışı və ya minimum skoru dəyişin.";
 
-})();
+
+  $("#t").hidden =
+    !view.length;
+
+
+  $("#cnt").textContent =
+    view.length.toLocaleString() +
+    " nəticə · səhifə " +
+    (page + 1) +
+    "/" +
+    pages;
+
+
+  $("#prev").disabled =
+    page === 0;
+
+
+  $("#next").disabled =
+    page >= pages - 1;
+
+}
+
+
+$("#q").oninput = () => {
+
+  page = 0;
+
+  render();
+
+};
+
+
+$("#min").oninput = e => {
+
+  $("#minv").textContent =
+    e.target.value;
+
+  page = 0;
+
+  render();
+
+};
+
+
+$("#prev").onclick = () => {
+
+  page--;
+
+  render();
+
+  scrollTo(0,0);
+
+};
+
+
+$("#next").onclick = () => {
+
+  page++;
+
+  render();
+
+  scrollTo(0,0);
+
+};
+
+
+/*
+ * "Seçilmiş IOC tipi" ↔
+ * "Bütün IOC-lər" seçimi dəyişəndə
+ * yalnız download linkləri dəyişir.
+ *
+ * Bütün dataset browser-də açılıb
+ * ayrıca cədvələ yüklənmir.
+ *
+ * Bu vacibdir, çünki all.json çox böyük
+ * ola bilər və səhifəni lazımsız yerə
+ * ağırlaşdırmamalıdır.
+ */
+$("#downloadSet").onchange =
+  updateDownloadLinks;
+
+
+init();
+
 </script>
 
 </body>
