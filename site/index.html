@@ -704,7 +704,9 @@
   }
 
   async function loadJson(url) {
-    const response = await fetch(url, { cache: "no-store" });
+    const separator = url.includes("?") ? "&" : "?";
+    const freshUrl = `${url}${separator}v=${Date.now()}`;
+    const response = await fetch(freshUrl, { cache: "no-store" });
     if (!response.ok) throw new Error(`${url} → ${response.status}`);
     return response.json();
   }
@@ -865,6 +867,8 @@
     state.type = type;
     buildTabs();
 
+    const base = `data/${encodeURIComponent(type)}`;
+
     $("#loading").hidden = false;
     $("#loading").textContent = "Data yüklənir…";
     $("#iocTable").hidden = true;
@@ -901,8 +905,9 @@
     $("#generated").textContent = `Dataset son hazırlanıb: ${formatDate(stats.generated_at)}`;
 
     const feeds = stats.feeds || [];
+    const totalFeeds = Number(stats.feed_count || feeds.length || 4);
     const successful = feeds.filter((item) => item.status === "success").length;
-    $("#statFeeds").textContent = `${successful} / ${feeds.length}`;
+    $("#statFeeds").textContent = `${successful} / ${totalFeeds}`;
   }
 
   function renderFeeds() {
